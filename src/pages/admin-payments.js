@@ -95,7 +95,13 @@ function renderPaymentsTable(payments, filter) {
         <tr><th>User</th><th>Pool</th><th>Squares</th><th>Amount</th><th>Charity</th><th>Method</th><th>Status</th><th>Date</th><th>Actions</th></tr>
       </thead>
       <tbody>
-        ${filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(p => `
+        ${filtered.sort((a, b) => {
+          const aliasA = (a.alias || '').toLowerCase();
+          const aliasB = (b.alias || '').toLowerCase();
+          if (aliasA < aliasB) return -1;
+          if (aliasA > aliasB) return 1;
+          return new Date(b.createdAt) - new Date(a.createdAt); // secondary sort by date
+        }).map(p => `
           <tr>
             <td style="font-weight:600;">${sanitize(p.alias || '—')}</td>
             <td style="color:var(--text-secondary);">${sanitize(p.poolName || '—')}</td>

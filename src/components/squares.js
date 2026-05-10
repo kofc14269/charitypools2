@@ -175,11 +175,28 @@ export function bindSquaresGrid(pool) {
   gridEl.addEventListener('click', (e) => {
     const cell = e.target.closest('.square-cell');
     if (!cell) return;
-    if (cell.classList.contains('claimed') || cell.classList.contains('mine')) return;
-
     const row = parseInt(cell.dataset.row);
     const col = parseInt(cell.dataset.col);
     const key = `r${row}c${col}`;
+
+    if (cell.classList.contains('claimed') || cell.classList.contains('mine')) {
+      const isAdmin = authStore.isAdmin && authStore.orgId === pool.orgId;
+      const isMine = cell.classList.contains('mine');
+      
+      if (isAdmin || isMine) {
+        if (confirm('Release this square?')) {
+          const poolRef = doc(db, 'pools', pool.id);
+          updateDoc(poolRef, {
+            [`squaresData.grid.${key}`]: null
+          }).then(() => {
+            cell.classList.remove('claimed', 'mine');
+            cell.textContent = '';
+            showToast('Square released', 'info');
+          });
+        }
+      }
+      return;
+    }
 
     const existingIdx = selectedSquares.findIndex(s => s.key === key);
     if (existingIdx >= 0) {

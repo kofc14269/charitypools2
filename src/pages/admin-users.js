@@ -56,6 +56,15 @@ async function loadUsers() {
     }
 
     const allUsers = [...orgUsers, ...extraUsers];
+    
+    // Sort all customer data by Alias alphabetically
+    allUsers.sort((a, b) => {
+      const aliasA = (a.alias || '').toLowerCase();
+      const aliasB = (b.alias || '').toLowerCase();
+      if (aliasA < aliasB) return -1;
+      if (aliasA > aliasB) return 1;
+      return 0;
+    });
 
     const listEl = document.getElementById('users-list');
     if (allUsers.length === 0) {
