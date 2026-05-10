@@ -1,5 +1,5 @@
 // Auth pages — Login & Register
-import { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile, doc, setDoc, serverTimestamp } from '../firebase.js';
+import { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile, doc, setDoc, getDoc, serverTimestamp, googleProvider, signInWithPopup } from '../firebase.js';
 import { showToast } from '../utils.js';
 import { router } from '../router.js';
 import { authStore } from '../auth-store.js';
@@ -25,7 +25,14 @@ export function renderLogin() {
           <div style="text-align:right;margin-bottom:16px;">
             <a href="#/forgot-password" style="font-size:0.85rem;color:var(--accent-teal);">Forgot password?</a>
           </div>
-          <button class="btn btn-primary btn-block btn-lg" type="submit" id="login-submit">Log In</button>
+          <button class="btn btn-primary btn-block btn-lg" type="submit" id="login-submit" style="margin-bottom:16px;">Log In</button>
+          
+          <div class="auth-divider">or</div>
+          
+          <button class="btn btn-secondary btn-block btn-lg" type="button" id="google-login-btn">
+            <svg viewBox="0 0 24 24" width="24" height="24" style="margin-right:8px;"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.16v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.16C1.43 8.55 1 10.22 1 12s.43 3.45 1.16 4.93l3.68-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.16 7.07l3.68 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Continue with Google
+          </button>
         </form>
         <p class="auth-footer">Don't have an account? <a href="#/register">Sign up</a></p>
       </div>
@@ -52,6 +59,8 @@ export function bindLogin() {
       btn.textContent = 'Log In';
     }
   });
+
+  document.getElementById('google-login-btn').addEventListener('click', handleGoogleAuth);
 }
 
 export function renderRegister() {
@@ -86,7 +95,14 @@ export function renderRegister() {
               Register as an organization admin
             </label>
           </div>
-          <button class="btn btn-primary btn-block btn-lg" type="submit" id="reg-submit">Create Account</button>
+          <button class="btn btn-primary btn-block btn-lg" type="submit" id="reg-submit" style="margin-bottom:16px;">Create Account</button>
+          
+          <div class="auth-divider">or</div>
+          
+          <button class="btn btn-secondary btn-block btn-lg" type="button" id="google-reg-btn">
+            <svg viewBox="0 0 24 24" width="24" height="24" style="margin-right:8px;"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.16v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.16C1.43 8.55 1 10.22 1 12s.43 3.45 1.16 4.93l3.68-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.16 7.07l3.68 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Continue with Google
+          </button>
         </form>
         <p class="auth-footer">Already have an account? <a href="#/login">Log in</a></p>
       </div>
@@ -160,6 +176,38 @@ export function bindRegister() {
       btn.textContent = 'Create Account';
     }
   });
+
+  document.getElementById('google-reg-btn').addEventListener('click', handleGoogleAuth);
+}
+
+async function handleGoogleAuth() {
+  try {
+    const cred = await signInWithPopup(auth, googleProvider);
+    
+    // Check if user document exists
+    const userDoc = await getDoc(doc(db, 'users', cred.user.uid));
+    
+    if (!userDoc.exists()) {
+      // First time Google login - create profile
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        alias: cred.user.displayName || 'GoogleUser',
+        email: cred.user.email,
+        role: 'participant',
+        orgId: null,
+        pools: [],
+        createdAt: serverTimestamp()
+      });
+    }
+
+    await authStore.refreshProfile();
+    showToast('Welcome to CharityPools, ' + authStore.alias + '!', 'success');
+    router.navigate(authStore.isAdmin ? '/admin' : '/dashboard');
+  } catch (err) {
+    if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+      console.error(err);
+      showToast('Google login failed.', 'error');
+    }
+  }
 }
 
 export function renderForgotPassword() {
