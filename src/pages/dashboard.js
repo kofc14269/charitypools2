@@ -77,8 +77,8 @@ async function loadDashboardData() {
         poolsListEl.innerHTML = `
           <div class="card" style="text-align:center;padding:48px;">
             <div style="font-size:3rem;margin-bottom:16px;">🎯</div>
-            <h3 style="margin-bottom:8px;">No pools yet</h3>
-            <p style="color:var(--text-secondary);margin-bottom:24px;">Browse available pools and join your first one!</p>
+            <h3 style="margin-bottom:8px;">You haven't joined any pools yet</h3>
+            <p style="color:var(--text-secondary);margin-bottom:24px;">Browse available public pools and join your first one!</p>
             <a href="#/pools" class="btn btn-primary">Browse Pools</a>
           </div>
         `;
